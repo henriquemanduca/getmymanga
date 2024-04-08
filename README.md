@@ -1,0 +1,2 @@
+# getmymanga
+A manga downloader
