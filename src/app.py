@@ -34,7 +34,7 @@ class App(ctk.CTk):
 
     def init_vars(self):
         if "nt" == os.name:
-            self.wm_iconbitmap(bitmap = "./resources/icon.ico")
+            self.wm_iconbitmap(bitmap="./resources/icon.ico")
         else:
             img = tk.PhotoImage(file="./resources/icon2.png")
             self.tk.call('wm', 'iconphoto', self._w, img)
