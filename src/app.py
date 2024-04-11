@@ -18,8 +18,6 @@ ctk.set_default_color_theme("blue")
 
 
 class App(ctk.CTk):
-    APP_FOLDER = "getmymanga"
-
     def __init__(self):
         super().__init__()
         self.title("Get my manga!")
@@ -45,7 +43,7 @@ class App(ctk.CTk):
         self.app_logo = tk.PhotoImage(file="./resources/image.png")
         self.download_option_var = tk.StringVar()
 
-        self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}/{self.APP_FOLDER}")
+        self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}")
         self.manga_name_var = tk.StringVar(value="Berserk")
 
         self.chap_start_var = tk.StringVar()
@@ -96,7 +94,7 @@ class App(ctk.CTk):
         chap_end_label.grid(row=row, column=3, padx=5, pady=0, sticky="w")
 
         row += 1
-        self.info_combobox = ctk.CTkComboBox(self, state="readonly", values=["all", "range", "last one"], command=self._info_combobox, variable=self.download_option_var)
+        self.info_combobox = ctk.CTkComboBox(self, state="readonly", values=["All", "Range", "Last one"], command=self._info_combobox, variable=self.download_option_var)
         self.info_combobox.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="we")
         self.info_combobox.set("All")
 
@@ -174,7 +172,11 @@ class App(ctk.CTk):
             start = self.chap_start_var.get()
             end = self.chap_end_var.get()
             compress = self.checkbox_compress.get()
-            self.download.get_files(output=folder, option=download_option, start_at=start, end_at=end, cbr=compress)
+            self.download.get_files(output=folder,
+                                    option=download_option,
+                                    start_at=int(start),
+                                    end_at=int(end),
+                                    cbr=compress)
         except Exception as e:
             message = f"Something went wrong. {e}"
         finally:
