@@ -132,10 +132,14 @@ class App(ctk.CTk):
     def _info_combobox(self, event=None):
         if event == "Range":
             self._set_normal_state([self.chap_start, self.chap_end])
+        else:
+            self._set_disabled_state([self.chap_start, self.chap_end])
 
     def _default_state(self):
+        self.manga_name_var.set("")
         self.progress_bar.stop()
         self._set_normal_state([self.load_button, self.info_combobox])
+        self._set_disabled_state([self.chap_start, self.chap_end])
 
     def _down_state(self):
         self.progress_bar.start()
@@ -149,8 +153,14 @@ class App(ctk.CTk):
         self._down_state()
         message = ""
         try:
-            last_one = self.download.get_chapters(self.manga_name_var.get())["last_one"]
-            message = f"{self.manga_name_var.get()} founded with {last_one} chapters available!"
+            manga_dict = self.download.get_chapters(self.manga_name_var.get())
+            last_one = manga_dict["last_one"]
+            available_chapters = len(manga_dict["chapters"])
+
+            unavailable_chapters = last_one - available_chapters
+            unavailable_message = f"{unavailable_chapters} unavailable" if unavailable_chapters > 0 else "0"
+
+            message = f"{self.manga_name_var.get()} founded with {available_chapters} chapters available and {unavailable_message}!"
             self._set_range(1, last_one)
         except Exception as e:
             message = f"Something went wrong. {e}"
@@ -165,23 +175,25 @@ class App(ctk.CTk):
 
     def _download_files(self):
         self._down_state()
+        last_one = self.download.manga_dict["last_one"]
         message = ""
+        folder = self.folder_var.get()
         try:
-            folder = self.folder_var.get()
             download_option = self.download_option_var.get()
-            start = self.chap_start_var.get()
-            end = self.chap_end_var.get()
+
             compress = self.checkbox_compress.get()
             self.download.get_files(output=folder,
                                     option=download_option,
-                                    start_at=int(start),
-                                    end_at=int(end),
+                                    start_at=int(self.chap_start_var.get()),
+                                    end_at=int(self.chap_end_var.get()),
                                     cbr=compress)
+            message = f"Save it on {folder}!"
         except Exception as e:
             message = f"Something went wrong. {e}"
         finally:
             self.info_label.configure(text=message)
             self._default_state()
+            self._set_range(1, last_one)
 
     def download_chapters(self, url):
         threading.Thread(target=lambda: self._download_files(), daemon=True).start()

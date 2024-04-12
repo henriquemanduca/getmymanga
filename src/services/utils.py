@@ -29,10 +29,11 @@ def create_folder(folder_path) -> str:
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
         return folder_path
-    else:
-        new_folder_path = rename_folder_if_exists(folder_path)
-        os.makedirs(new_folder_path)
-        return new_folder_path
+    return folder_path
+    # else:
+    #     new_folder_path = rename_folder_if_exists(folder_path)
+    #     os.makedirs(new_folder_path)
+    #     return new_folder_path
 
 
 def rename_folder_if_exists(folder_path) -> str:
