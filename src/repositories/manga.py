@@ -6,32 +6,37 @@ Connection.get_db().create_tables([Manga])
 
 class MangaRepository():
     def create(self, name: str) -> Manga:
-        return Manga.create(name=name, last_one=0)
+        if manga := self.get_by_name(name):
+            return manga
 
-    def get_by_id(self, id) -> Manga:
+        return Manga.create(name=name, last_downloaded=0)
+
+    def get_by_id(self, id: int) -> Manga:
         try:
             return Manga.get(Manga.id == id)
         except Manga.DoesNotExist:
             return None
 
-    def get_by_name(self, name) -> Manga:
+    def get_by_name(self, name: str) -> Manga:
         try:
             return Manga.get(Manga.name == name)
         except Manga.DoesNotExist:
             return None
 
-    def update(self, id, name=None, last_one=None) -> Manga:
+    def update(self, id: int, **kwargs) -> Manga:
         manga = self.get_by_id(id)
+
         if manga:
-            if name:
+            if name := kwargs.get("name"):
                 manga.name = name
-            if last_one:
-                manga.last_one = last_one
+            if last_downloaded := kwargs.get("last_downloaded"):
+                manga.last_downloaded = last_downloaded
             manga.save()
             return manga
+
         return None
 
-    def delete(self, id) -> bool:
+    def delete(self, id: int) -> bool:
         manga = self.get_by_id(id)
         if manga:
             manga.delete_instance()

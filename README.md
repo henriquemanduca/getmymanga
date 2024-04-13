@@ -1,8 +1,8 @@
 # getmymanga
-A manga downloader
+A manga downloader from Mangasee123.com
 
 ## Tested on:
-- [ ] Windows
+- [x] Windows
 - [x] Linux (Ubuntu)
 - [ ] Mac Os
 

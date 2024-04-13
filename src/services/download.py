@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import subprocess
 import os
 import aiofiles
@@ -10,8 +9,6 @@ import typing
 
 from src.services.utils import remove_leading_zeros, get_default_download_folder, create_folder, add_leading_zeros
 from src.repositories.manga import MangaRepository
-
-LOGGER = logging.getLogger()
 
 
 class DownloadService:
@@ -28,11 +25,6 @@ class DownloadService:
             return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
         return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-{page}.html"
 
-    def save_manga(self, manga_name: str):
-        manga_db = self.manga_repository.get_by_name(manga_name)
-        if not manga_db:
-            self.manga_repository.create(manga_name)
-
     def get_chapters(self, manga_name) -> dict:
         self.manga_dict["name"] = manga_name.replace(" ", "-")
         url = self.get_manga_page_url(self.manga_dict["name"], "1", "1", "1")
@@ -47,17 +39,15 @@ class DownloadService:
         else:
             raise Exception(f"No chapters found on \n {url} !")
 
-        self.save_manga(manga_name)
+        self.manga_repository.create(manga_name)
 
         chapters = json.loads(chapter_details_str)
-
         for chapter_detail in chapters:
             chapter = int(remove_leading_zeros(chapter_detail["Chapter"][1:-1]))
             self.manga_dict["chapters"][chapter] = chapter_detail
             self.manga_dict["last_one"] = chapter
 
         self.chapters_check = True
-
         return self.manga_dict
 
     @staticmethod
@@ -124,15 +114,17 @@ class DownloadService:
                 subprocess.run(["zip", "-r", f"{folder}.cbr", folder])
                 subprocess.run(["rm", "-r", folder])
 
+        except asyncio.TimeoutError:
+            raise Exception("Timeout in downloading chapter %s!", chapter)
+
         except Exception as e:
             raise Exception(f"Error on download and save chapter! {e}")
 
-        except asyncio.TimeoutError:
-            LOGGER.warning("Timeout in downloading chapter %s!", chapter)
 
     async def _download_chapters(self, output: str, chapter_details: typing.Iterable) -> None:
         session = requests_html.AsyncHTMLSession()
         coroutines = []
+        last_downloaded = 0
 
         for ch_detail in chapter_details:
             chapter = ch_detail["Chapter"][1:-1]
@@ -145,6 +137,10 @@ class DownloadService:
             coroutines.append(
                 self._download_and_save_chapter(session, output, directory, chapter, pages),
             )
+            last_downloaded = chapter
+
+        manga = self.manga_repository.get_by_name(self.manga_dict["name"])
+        self.manga_repository.update(manga.id, last_downloaded=last_downloaded)
 
         if len(coroutines) > 10:
             for chunk in [coroutines[i:i + 10] for i in range(0, len(coroutines), 10)]:
