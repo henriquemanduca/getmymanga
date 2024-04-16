@@ -8,6 +8,7 @@ import requests
 
 from src.services.download import DownloadService
 from src.services.utils import get_default_download_folder
+from src.repositories.manga import MangaRepository
 
 logging.basicConfig()
 LOGGER = logging.getLogger()
@@ -22,7 +23,7 @@ class App(ctk.CTk):
         super().__init__()
         self.title("Get my manga!")
         window_width = 625
-        window_height = 400
+        window_height = 450
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         x = (screen_width // 2) - (window_width // 2)
@@ -31,6 +32,7 @@ class App(ctk.CTk):
         self.resizable(True, True)
         self.init_vars()
         self.create_widgets()
+        self._get_history()
 
     def init_vars(self):
         if "nt" == os.name:
@@ -39,12 +41,14 @@ class App(ctk.CTk):
             img = tk.PhotoImage(file="./resources/icon2.png")
             self.tk.call('wm', 'iconphoto', self._w, img)
 
+        self.manga_repository = MangaRepository()
         self.download = DownloadService()
         self.app_logo = tk.PhotoImage(file="./resources/image.png")
         self.download_option_var = tk.StringVar()
+        self.history_option_var = tk.StringVar()
 
         self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}")
-        self.manga_name_var = tk.StringVar(value="Berserk")
+        self.manga_name_var = tk.StringVar(value="")
 
         self.chap_start_var = tk.StringVar()
         self.chap_end_var = tk.StringVar()
@@ -68,10 +72,20 @@ class App(ctk.CTk):
         folder_entry.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
 
         manga_name = ctk.CTkEntry(self, textvariable=self.manga_name_var)
-        manga_name.grid(row=row, column=3, columnspan=1, padx=5, pady=5, sticky="ew")
+        manga_name.grid(row=row, column=3, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        row += 1
+        history_label = ctk.CTkLabel(self, text="History:")
+        history_label.grid(row=row, column=0, padx=5, pady=0, sticky="w")
+
+        row += 1
+        self.history_combobox = ctk.CTkComboBox(
+            self, state="readonly", values=[], command=self._history_combobox, variable=self.history_option_var
+        )
+        self.history_combobox.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="we")
 
         self.load_button = ctk.CTkButton(self,  text="Load Chapters", command=lambda: self.load_chapters())
-        self.load_button.grid(row=row, column=4, padx=5, pady=5, sticky="we")
+        self.load_button.grid(row=row, column=3, columnspan=2, padx=5, pady=5, sticky="we")
 
         row += 1
         self.progress_bar = ctk.CTkProgressBar(self)
@@ -94,7 +108,13 @@ class App(ctk.CTk):
         chap_end_label.grid(row=row, column=3, padx=5, pady=0, sticky="w")
 
         row += 1
-        self.info_combobox = ctk.CTkComboBox(self, state="readonly", values=["All", "Range", "Last one"], command=self._info_combobox, variable=self.download_option_var)
+        self.info_combobox = ctk.CTkComboBox(
+            self,
+            state="readonly",
+            values=["All", "Range", "Last one"],
+            command=self._info_combobox,
+            variable=self.download_option_var
+        )
         self.info_combobox.grid(row=row, column=0, columnspan=2, padx=5, pady=5, sticky="we")
         self.info_combobox.set("All")
 
@@ -135,25 +155,49 @@ class App(ctk.CTk):
         else:
             self._set_disabled_state([self.chap_start, self.chap_end])
 
+    def _history_combobox(self, event=None):
+        pass
+
     def _default_state(self):
-        self.manga_name_var.set("")
+        # self.manga_name_var.set("")
         self.progress_bar.stop()
-        self._set_normal_state([self.load_button, self.info_combobox, self.download_button, self.checkbox])
-        self._set_disabled_state([self.chap_start, self.chap_end])
+        self._set_normal_state([
+            self.history_combobox,
+            self.load_button,
+            self.info_combobox,
+            self.download_button,
+            self.checkbox,
+            self.chap_start,
+            self.chap_end
+        ])
 
     def _down_state(self):
         self.progress_bar.start()
         self._set_disabled_state([self.chap_start, self.chap_end])
-        self._set_disabled_state([self.load_button, self.info_combobox, self.download_button, self.checkbox])
+        self._set_disabled_state([
+            self.load_button,
+            self.history_combobox,
+            self.info_combobox,
+            self.download_button,
+            self.checkbox]
+        )
 
     def _set_range(self, first_one, last_one):
         self.chap_start_var.set(str(first_one))
         self.chap_end_var.set(str(last_one))
 
+    def _get_history(self):
+        mangas = self.manga_repository.get_all()
+        self.history_combobox.configure(values=[manga.name for manga in mangas])
+
     def get_chapters(self):
-        manga_name = self.manga_name_var.get()
-        if manga_name.replace(" ", "") == "":
-            return
+        manga_name = self.manga_name_var.get().replace(" ", "")
+        manga_history = self.history_option_var.get()
+
+        if manga_name == "" and manga_history == "":
+            self.info_label.configure(text="Inform the manga name or select one from history!")
+        else:
+            manga_name = manga_name if manga_name != "" else manga_history
 
         self._down_state()
         message = ""
@@ -165,15 +209,16 @@ class App(ctk.CTk):
             unavailable_chapters = last_one - available_chapters
             unavailable_message = f"{unavailable_chapters}" if unavailable_chapters > 0 else "0"
 
-            message = (f"{self.manga_name_var.get()} founded with "
+            message = (f"{manga_name} founded with "
                        f"{available_chapters} chapters available and {unavailable_message} unavailable!")
             self._set_range(1, last_one)
         except Exception as e:
             message = f"Something went wrong. {e}"
         except requests.exceptions.ConnectionError:
-            message = "Could not connect to http://mangasee123.com"
+            message = "Could not connect to server"
         finally:
             self.info_label.configure(text=message)
+            self._get_history()
             self._default_state()
 
     def load_chapters(self):

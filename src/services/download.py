@@ -18,16 +18,20 @@ class DownloadService:
     def __init__(self):
         self.chapters_check = False
         self.compress_to_cbr = False
-        self.manga_dict = {"name": "", "last_one": 0, "chapters": {}}
+        self.manga_dict = None
         self.manga_repository = MangaRepository()
+        self._set_manga_dict("")
+
+    def _set_manga_dict(self, name: str) -> None:
+        self.manga_dict = {"name": name, "last_one": 0, "chapters": {}}
 
     def get_manga_page_url(self, manga_name: str, directory: str, chapter: str, page: str) -> str:
         if int(directory) == 1:
             return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
         return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-{page}.html"
 
-    def get_chapters(self, manga_name) -> dict:
-        self.manga_dict["name"] = manga_name.replace(" ", "-")
+    def get_chapters(self, manga_name: str) -> dict:
+        self._set_manga_dict(manga_name)
         url = self.get_manga_page_url(self.manga_dict["name"], "1", "1", "1")
 
         session = requests_html.HTMLSession()
