@@ -22,7 +22,7 @@ class App(ctk.CTk):
         super().__init__()
         self.title("Get my manga!")
         window_width = 625
-        window_height = 390
+        window_height = 400
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         x = (screen_width // 2) - (window_width // 2)
@@ -104,16 +104,16 @@ class App(ctk.CTk):
         self.chap_end = ctk.CTkEntry(self, textvariable=self.chap_end_var, placeholder_text="End")
         self.chap_end.grid(row=row, column=3, columnspan=1, padx=5, pady=5, sticky="ew")
 
-        checkbox = ctk.CTkCheckBox(self, text="Compress to .cbr", variable=self.checkbox_compress)
-        checkbox.grid(row=row, column=4)
+        self.checkbox = ctk.CTkCheckBox(self, text="Compress to .cbr", variable=self.checkbox_compress)
+        self.checkbox.grid(row=row, column=4)
 
         row += 1
-        download_button = ctk.CTkButton(self,  text="Download", command=lambda: self.download_chapters(self.manga_name_var.get()))
-        download_button.grid(row=row, column=2, columnspan=2, padx=5, pady=5, sticky="we")
+        self.download_button = ctk.CTkButton(self,  text="Download", command=lambda: self.download_chapters())
+        self.download_button.grid(row=row, column=2, columnspan=2, padx=5, pady=5, sticky="we")
 
         # define the grid
         # self.columnconfigure(0, weight=0)
-        self.columnconfigure((0,1,2,3), weight=0)
+        self.columnconfigure((0, 1, 2, 3), weight=0)
 
     def _set_normal_state(self, fields):
         if isinstance(fields, list):
@@ -138,29 +138,35 @@ class App(ctk.CTk):
     def _default_state(self):
         self.manga_name_var.set("")
         self.progress_bar.stop()
-        self._set_normal_state([self.load_button, self.info_combobox])
+        self._set_normal_state([self.load_button, self.info_combobox, self.download_button, self.checkbox])
         self._set_disabled_state([self.chap_start, self.chap_end])
 
     def _down_state(self):
         self.progress_bar.start()
-        self._set_disabled_state([self.load_button, self.info_combobox])
+        self._set_disabled_state([self.chap_start, self.chap_end])
+        self._set_disabled_state([self.load_button, self.info_combobox, self.download_button, self.checkbox])
 
     def _set_range(self, first_one, last_one):
         self.chap_start_var.set(str(first_one))
         self.chap_end_var.set(str(last_one))
 
     def get_chapters(self):
+        manga_name = self.manga_name_var.get()
+        if manga_name.replace(" ", "") == "":
+            return
+
         self._down_state()
         message = ""
         try:
-            manga_dict = self.download.get_chapters(self.manga_name_var.get())
+            manga_dict = self.download.get_chapters(manga_name)
             last_one = manga_dict["last_one"]
             available_chapters = len(manga_dict["chapters"])
 
             unavailable_chapters = last_one - available_chapters
-            unavailable_message = f"{unavailable_chapters} unavailable" if unavailable_chapters > 0 else "0"
+            unavailable_message = f"{unavailable_chapters}" if unavailable_chapters > 0 else "0"
 
-            message = f"{self.manga_name_var.get()} founded with {available_chapters} chapters available and {unavailable_message}!"
+            message = (f"{self.manga_name_var.get()} founded with "
+                       f"{available_chapters} chapters available and {unavailable_message} unavailable!")
             self._set_range(1, last_one)
         except Exception as e:
             message = f"Something went wrong. {e}"
@@ -178,6 +184,7 @@ class App(ctk.CTk):
         last_one = self.download.manga_dict["last_one"]
         message = ""
         folder = self.folder_var.get()
+
         try:
             download_option = self.download_option_var.get()
 
@@ -195,6 +202,6 @@ class App(ctk.CTk):
             self._default_state()
             self._set_range(1, last_one)
 
-    def download_chapters(self, url):
+    def download_chapters(self):
         threading.Thread(target=lambda: self._download_files(), daemon=True).start()
 

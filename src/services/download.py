@@ -7,7 +7,8 @@ import requests_html
 import re
 import typing
 
-from src.services.utils import remove_leading_zeros, get_default_download_folder, create_folder, add_leading_zeros
+from src.services.utils import (remove_leading_zeros, get_default_download_folder,
+                                create_folder, create_cbr, add_leading_zeros)
 from src.repositories.manga import MangaRepository
 
 
@@ -84,8 +85,8 @@ class DownloadService:
 
         for page in range(1, int(pages) + 1):
             download_url = DownloadService._get_page_image_url(host, directory, name, chapter, page)
-            save_path = os.path.join(add_leading_zeros(chapter, 4), f"{add_leading_zeros(page, 3)}.png")
-            items.append({"download_url": download_url, "save_path": save_path})
+            sub_folder = os.path.join(add_leading_zeros(chapter, 4), f"{add_leading_zeros(page, 3)}.png")
+            items.append({"download_url": download_url, "sub_folder": sub_folder})
 
         return items
 
@@ -97,11 +98,12 @@ class DownloadService:
         chapter: int,
         pages: int
     ) -> None:
+        folder = ""
         try:
             items = await self._get_download_url_items(session, directory, chapter, pages)
             for item in items:
                 download_url = item["download_url"]
-                save_path = f"{output}/"+item["save_path"]
+                save_path = os.path.join(output, item["sub_folder"])
                 if os.path.isfile(save_path):
                     continue
 
@@ -111,15 +113,13 @@ class DownloadService:
 
             if self.compress_to_cbr:
                 folder = os.path.join(output, add_leading_zeros(chapter, 4))
-                subprocess.run(["zip", "-r", f"{folder}.cbr", folder])
-                subprocess.run(["rm", "-r", folder])
+                create_cbr(folder)
 
         except asyncio.TimeoutError:
             raise Exception("Timeout in downloading chapter %s!", chapter)
 
         except Exception as e:
-            raise Exception(f"Error on download and save chapter! {e}")
-
+            raise Exception(f"Error on download and save chapter!\n{e}")
 
     async def _download_chapters(self, output: str, chapter_details: typing.Iterable) -> None:
         session = requests_html.AsyncHTMLSession()
@@ -129,6 +129,7 @@ class DownloadService:
         for ch_detail in chapter_details:
             chapter = ch_detail["Chapter"][1:-1]
             directory = ch_detail["Directory"][4:]
+            directory = directory if directory != "" else "1"
             pages = int(ch_detail["Page"])
 
             if not os.path.isdir(os.path.join(output, chapter)):
@@ -139,6 +140,7 @@ class DownloadService:
             )
             last_downloaded = chapter
 
+        # Save the name for future features
         manga = self.manga_repository.get_by_name(self.manga_dict["name"])
         self.manga_repository.update(manga.id, last_downloaded=last_downloaded)
 
@@ -170,7 +172,7 @@ class DownloadService:
         self.compress_to_cbr = cbr
         self.chapters_check = False
 
-        folder = create_folder(f"{folder}/{self.manga_dict['name']}")
+        folder = create_folder(os.path.join(folder, self.manga_dict['name']))
 
         target_chapters = []
         for ch in range(start_at, end_at + 1):

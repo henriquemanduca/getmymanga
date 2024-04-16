@@ -1,6 +1,7 @@
 import os
 import platform
 import zipfile
+import subprocess
 
 
 def remove_leading_zeros(num: str) -> str:
@@ -72,12 +73,16 @@ def remove_files(folder):
     os.rmdir(folder)
 
 
-def create_cbr(folder_path, cbr_file_path):
+def create_cbr(folder_path):
     if not os.path.exists(folder_path):
         return
 
-    with zipfile.ZipFile(cbr_file_path, 'w', zipfile.ZIP_DEFLATED) as cbr_file:
-        for folder_name, subfolders, files in os.walk(folder_path):
-            for filename in files:
-                file_path = os.path.join(folder_name, filename)
-                cbr_file.write(str(file_path), str(os.path.relpath(str(file_path), str(folder_path))))
+    if "Windows" == platform.system():
+        with zipfile.ZipFile(f"{folder_path}.cbr", 'w', zipfile.ZIP_DEFLATED) as cbr_file:
+            for folder_name, subfolders, files in os.walk(folder_path):
+                for filename in files:
+                    file_path = os.path.join(folder_name, filename)
+                    cbr_file.write(str(file_path), str(os.path.relpath(str(file_path), str(folder_path))))
+    else:
+        subprocess.run(["zip", "-r", f"{folder_path}.cbr", folder_path])
+        # subprocess.run(["rm", "-r", folder])
