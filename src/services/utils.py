@@ -2,6 +2,7 @@ import os
 import platform
 import zipfile
 import subprocess
+import shutil
 
 
 def remove_leading_zeros(num: str) -> str:
@@ -85,4 +86,6 @@ def create_cbr(folder_path):
                     cbr_file.write(str(file_path), str(os.path.relpath(str(file_path), str(folder_path))))
     else:
         subprocess.run(["zip", "-r", f"{folder_path}.cbr", folder_path])
-        # subprocess.run(["rm", "-r", folder])
+
+    shutil.rmtree(folder_path)
+
