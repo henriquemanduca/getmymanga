@@ -7,9 +7,12 @@ import requests_html
 import re
 import typing
 
-from src.services.utils import (remove_leading_zeros, get_default_download_folder,
-                                create_folder, create_cbr, add_leading_zeros)
 from src.repositories.manga import MangaRepository
+from src.services.utils import (remove_leading_zeros,
+                                get_default_download_folder,
+                                create_folder,
+                                create_cbr,
+                                add_leading_zeros)
 
 
 class DownloadService:
@@ -35,11 +38,21 @@ class DownloadService:
     def get_manga_page_url(self, manga_name: str, directory: int, chapter: str, page: str) -> str:
         if directory == 1:
             return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
+
         return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-{page}.html"
 
-    def get_directories(self, manga_name: str) -> dict:
+    def _get_page_image_url(self, host: str, directory: int, name: str, chapter: int, page: int) -> str:
+        schapter = add_leading_zeros(chapter, 4)
+        spage = add_leading_zeros(page, 3)
+
+        if self._get_directories_count() > 1:
+            return f"https://{host}/manga/{name}/Part{directory}/{schapter}-{spage}.png"
+
+        return f"https://{host}/manga/{name}/{schapter}-{spage}.png"
+
+    def find_directories(self, manga_name: str) -> dict:
         self._set_manga_dict(manga_name)
-        url = self.get_manga_page_url(self.manga_dict["name"], "1", "1", "1")
+        url = self.get_manga_page_url(manga_name, 1, "1", "1")
 
         session = requests_html.HTMLSession()
         resp = session.get(url)
@@ -55,6 +68,7 @@ class DownloadService:
 
         last_directory = "1"
         chapters = json.loads(chapter_details_str)
+
         for chapter_detail in chapters:
             try:
                 directory = chapter_detail["Directory"][4:] if chapter_detail["Directory"] != "" else last_directory
@@ -73,15 +87,6 @@ class DownloadService:
 
         self.chapters_check = True
         return self.manga_dict
-
-    def _get_page_image_url(self, host: str, directory: int, name: str, chapter: int, page: int) -> str:
-        schapter = add_leading_zeros(chapter, 4)
-        spage = add_leading_zeros(page, 3)
-
-        if self._get_directories_count() > 1:
-            return f"https://{host}/manga/{name}/Part{directory}/{schapter}-{spage}.png"
-
-        return f"https://{host}/manga/{name}/{schapter}-{spage}.png"
 
     async def _get_download_url_items(
         self,
@@ -151,7 +156,7 @@ class DownloadService:
         for ch_detail in chapter_details:
             chapter = ch_detail["Chapter"][1:-1]
             directory = ch_detail["Directory"][4:]
-            directory = int(directory) if directory != "" else 0
+            directory = int(directory) if directory != "" else 1
             pages = int(ch_detail["Page"])
 
             if not os.path.isdir(os.path.join(output, chapter)):
@@ -172,33 +177,35 @@ class DownloadService:
         else:
             await asyncio.gather(*coroutines)
 
-    def get_files(self, output="", option="All", directory=1, start_at=1, end_at=1, cbr=False):
+    def _get_folder(self, folder: str) -> str:
+        temp_path = folder if folder != "" else get_default_download_folder()
+        return create_folder(os.path.join(temp_path, self.manga_dict['name']))
+
+    def _get_directory(self, directory: int) -> dict:
+        return self.manga_dict["directories"][str(directory)]
+
+    def get_files(self, params_dic):
         if not self.chapters_check:
             raise Exception("Chapters not checked yet!")
 
-        folder = output if output == "" else get_default_download_folder()
-
-        directory = self.manga_dict["directories"][str(directory)]
-
-        if option == "All":
-            start_at = 1
-            end_at = directory["last_chapter"]
-        elif option == "Range":
-            start_at = start_at
-            end_at = end_at
+        if params_dic["download_option"] == "Range":
+            start_at = params_dic["start_at"]
+            end_at = params_dic["end_at"]
             if start_at > end_at:
                 end_at = start_at
 
-        self.compress_to_cbr = cbr
+        self.compress_to_cbr = params_dic["cbr"]
         self.chapters_check = False
 
-        folder = create_folder(os.path.join(folder, self.manga_dict['name']))
-
+        download_folder = self._get_folder(params_dic["output"])
         target_chapters = []
+
+        directory = self._get_directory(params_dic["directory_option"])
+
         for ch in range(start_at, end_at + 1):
             chapter = directory["chapters"].get(ch)
             if chapter:
                 target_chapters.append(chapter)
 
-        asyncio.run(self._download_chapters(folder, target_chapters))
+        asyncio.run(self._download_chapters(download_folder, target_chapters))
 

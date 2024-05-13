@@ -125,7 +125,7 @@ class App(ctk.CTk):
         self.info_combobox = ctk.CTkComboBox(
             self,
             state="readonly",
-            values=["Range", "All", "Last one"],
+            values=["Range", "Last one"],
             command=self._info_combobox,
             variable=self.download_option_var
         )
@@ -223,8 +223,9 @@ class App(ctk.CTk):
 
         self._down_state()
         message = ""
+
         try:
-            manga_dict = self.download.get_directories(manga_name)
+            manga_dict = self.download.find_directories(manga_name)
             self.available_directories = manga_dict["directories"]
 
             direcotory_count = len(self.available_directories)
@@ -249,20 +250,21 @@ class App(ctk.CTk):
 
     def _download_files(self):
         self._down_state()
-
         message = ""
-        folder = self.folder_var.get()
 
         try:
-            download_option = self.download_option_var.get()
+            params_dic = {
+                "output": self.folder_var.get(),
+                "directory_option": int(self.dir_option_var.get()),
+                "download_option": self.download_option_var.get(),
+                "start_at": int(self.chap_start_var.get()),
+                "end_at": int(self.chap_end_var.get()),
+                "cbr": self.checkbox_compress.get()
+            }
 
-            compress = self.checkbox_compress.get()
-            self.download.get_files(output=folder,
-                                    option=download_option,
-                                    start_at=int(self.chap_start_var.get()),
-                                    end_at=int(self.chap_end_var.get()),
-                                    cbr=compress)
-            message = f"Save it on {folder}!"
+            self.download.get_files(params_dic)
+
+            message = f"Save it on {params_dic["output"]}!"
         except Exception as e:
             message = f"Something went wrong. {e}"
         finally:
