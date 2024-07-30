@@ -1,29 +1,32 @@
+from typing import Any
+
 from src.database.connection import Connection
 from src.models.manga import Manga
 
 
 Connection.get_db().create_tables([Manga])
 
-class MangaRepository():
+
+class MangaRepository:
     def create(self, name: str) -> Manga:
         if manga := self.get_by_name(name):
             return manga
 
         return Manga.create(name=name, last_downloaded=0)
 
-    def get_by_id(self, id: int) -> Manga:
+    def get_by_id(self, id: int) -> Any | None:
         try:
             return Manga.get(Manga.id == id)
         except Manga.DoesNotExist:
             return None
 
-    def get_by_name(self, name: str) -> Manga:
+    def get_by_name(self, name: str) -> Any | None:
         try:
             return Manga.get(Manga.name == name)
         except Manga.DoesNotExist:
             return None
 
-    def update(self, id: int, **kwargs) -> Manga:
+    def update(self, id: int, **kwargs) -> Manga | None:
         manga = self.get_by_id(id)
 
         if manga:
@@ -36,12 +39,12 @@ class MangaRepository():
 
         return None
 
-    def delete(self, id: int) -> bool:
-        manga = self.get_by_id(id)
+    def delete(self, manga_id: int) -> bool:
+        manga = self.get_by_id(manga_id)
         if manga:
             manga.delete_instance()
             return True
         return False
 
-    def get_all(self):
+    def get_all(self) -> list[Manga]:
         return Manga.select()

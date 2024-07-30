@@ -53,7 +53,8 @@ class App(ctk.CTk):
 
         self.chap_start_var = tk.StringVar()
         self.chap_end_var = tk.StringVar()
-        self._set_range(1,1)
+
+        self._set_range(1, 1)
 
         self.checkbox_compress = tk.BooleanVar(value=False)
 
@@ -264,7 +265,7 @@ class App(ctk.CTk):
 
             self.download.get_files(params_dic)
 
-            message = f"Save it on {params_dic["output"]}!"
+            message = f"Save it on {params_dic['output']}!"
         except Exception as e:
             message = f"Something went wrong. {e}"
         finally:
