@@ -178,7 +178,7 @@ class DownloadMangaseeService:
             last_downloaded = chapter
 
         # Save the the latest one chosen
-        manga = self.manga_repository.get_by_name(self.manga_dict["name"])
+        manga = self.manga_repository.get_by_name(self.manga_name)
         self.manga_repository.update(manga.id, last_downloaded=last_downloaded)
 
         await self._chunk_routines(coroutines=coroutines)
@@ -192,10 +192,10 @@ class DownloadMangaseeService:
 
     def _get_folder(self, folder: str) -> str:
         temp_path = folder if folder != "" else get_default_download_folder()
-        return create_folder(os.path.join(temp_path, self.manga_dict['name']))
+        return create_folder(os.path.join(temp_path, self.manga_name))
 
     def _get_directory(self, directory: int) -> dict:
-        return self.manga_dict["directories"][str(directory)]
+        return self._get_manga_dict()["directories"][str(directory)]
 
     def get_files(self, params_dic):
         # if not self.chapters_check:
