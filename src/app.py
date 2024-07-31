@@ -6,7 +6,7 @@ import os
 import threading
 import requests
 
-from src.services.download import DownloadService
+from src.services.download_mangasse import DownloadMangaseeService
 from src.services.utils import get_default_download_folder
 from src.repositories.manga import MangaRepository
 
@@ -42,7 +42,7 @@ class App(ctk.CTk):
             self.tk.call('wm', 'iconphoto', self._w, img)
 
         self.manga_repository = MangaRepository()
-        self.download = DownloadService()
+        self.download = DownloadMangaseeService()
         self.app_logo = tk.PhotoImage(file="./resources/image.png")
         self.dir_option_var = tk.StringVar()
         self.download_option_var = tk.StringVar()
@@ -212,7 +212,7 @@ class App(ctk.CTk):
     def _set_directory(self, directories: int):
          self.dir_combobox.configure(values=[str(i) for i in range(1, directories + 1)])
 
-    def get_directories(self):
+    def _get_directories(self):
         manga_name = self.manga_name_var.get().replace(" ", "")
         manga_history = self.history_option_var.get()
 
@@ -247,7 +247,7 @@ class App(ctk.CTk):
             self._default_state()
 
     def load_chapters(self):
-        threading.Thread(target=lambda: self.get_directories(), args=(), daemon=True).start()
+        threading.Thread(target=lambda: self._get_directories(), args=(), daemon=True).start()
 
     def _download_files(self):
         self._down_state()
