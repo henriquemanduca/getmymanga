@@ -1,10 +1,11 @@
 import tkinter as tk
 import customtkinter as ctk
-# from CTkMessagebox import CTkMessagebox as mbox
 import logging
 import os
 import threading
 import requests
+
+from CTkMessagebox import CTkMessagebox as mbox
 
 from src.services.download_mangasse import DownloadMangaseeService
 from src.services.utils import get_default_download_folder
@@ -54,7 +55,7 @@ class App(ctk.CTk):
         self.chap_start_var = tk.StringVar()
         self.chap_end_var = tk.StringVar()
 
-        self._set_range(1, 1)
+        self._set_range(1, 5)
 
         self.checkbox_compress = tk.BooleanVar(value=False)
 
@@ -100,7 +101,7 @@ class App(ctk.CTk):
         self.info_label.grid(row=row, column=0, columnspan=5, padx=5, pady=5, sticky="w")
 
         row += 1
-        option_label = ctk.CTkLabel(self, text="Diretory:")
+        option_label = ctk.CTkLabel(self, text="Directory:")
         option_label.grid(row=row, column=0, padx=5, pady=0, sticky="w")
 
         option_label = ctk.CTkLabel(self, text="Download options:")
@@ -143,7 +144,7 @@ class App(ctk.CTk):
         self.checkbox = ctk.CTkCheckBox(self, text="Compress to .cbr", variable=self.checkbox_compress)
         self.checkbox.grid(row=row, column=0, columnspan=2)
 
-        self.download_button = ctk.CTkButton(self,  text="Download", command=lambda: self.download_chapters())
+        self.download_button = ctk.CTkButton(self,  text="Download", state="disabled", command=lambda: self.download_chapters())
         self.download_button.grid(row=row, column=3, columnspan=2, padx=5, pady=5, sticky="we")
 
         # define the grid
@@ -217,7 +218,7 @@ class App(ctk.CTk):
         manga_history = self.history_option_var.get()
 
         if manga_name == "" and manga_history == "":
-            self.info_label.configure(text="Inform the manga name or select one from history!")
+            mbox(title="Info", message="Inform the manga name or select one from history!")
             return
         else:
             manga_name = manga_name if manga_name != "" else manga_history
@@ -238,9 +239,9 @@ class App(ctk.CTk):
             message = (f"{direcotory_count} directories founded with {chapters_count} chapters available!")
 
         except requests.exceptions.ConnectionError:
-            message = "Could not connect to server"
+            mbox(title="Warning", message="Could not connect to server", icon="warning", option_1="Cancel")
         except Exception as e:
-            message = f"Something went wrong. {e}"
+            mbox(title="Error", message=f"Something went wrong.\n{e}", icon="cancel")
         finally:
             self.info_label.configure(text=message)
             self._get_history()
@@ -264,12 +265,11 @@ class App(ctk.CTk):
             }
 
             self.download.get_files(params_dic)
-
-            message = f"Save it on {params_dic['output']}!"
+            mbox(title="Info", message=f"Save it on {params_dic['output']}!")
         except Exception as e:
-            message = f"Something went wrong. {e}"
+            mbox(title="Error", message=f"Something went wrong.\n{e}")
         finally:
-            self.info_label.configure(text=message)
+            # self.info_label.configure(text=message)
             self._default_state()
 
     def download_chapters(self):
