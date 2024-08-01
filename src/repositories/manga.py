@@ -27,13 +27,20 @@ class MangaRepository:
             return None
 
     def update(self, id: int, **kwargs) -> Manga | None:
-        manga = self.get_by_id(id)
+        manga = None
+
+        if id:
+            manga = self.get_by_id(id)
+        elif kwargs.get("name"):
+            manga = self.get_by_name(kwargs.get("name"))
 
         if manga:
             if name := kwargs.get("name"):
                 manga.name = name
+
             if last_downloaded := kwargs.get("last_downloaded"):
                 manga.last_downloaded = last_downloaded
+
             manga.save()
             return manga
 
@@ -41,9 +48,11 @@ class MangaRepository:
 
     def delete(self, manga_id: int) -> bool:
         manga = self.get_by_id(manga_id)
+
         if manga:
             manga.delete_instance()
             return True
+
         return False
 
     def get_all(self) -> list[Manga]:

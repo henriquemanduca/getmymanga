@@ -178,8 +178,7 @@ class DownloadMangaseeService:
             last_downloaded = chapter
 
         # Save the the latest one chosen
-        manga = self.manga_repository.get_by_name(self.manga_name)
-        self.manga_repository.update(manga.id, last_downloaded=last_downloaded)
+        self.manga_repository.update(name=self.manga_name, last_downloaded=last_downloaded)
 
         await self._chunk_routines(coroutines=coroutines)
 
@@ -198,9 +197,6 @@ class DownloadMangaseeService:
         return self._get_manga_dict()["directories"][str(directory)]
 
     def get_files(self, params_dic):
-        # if not self.chapters_check:
-        #     raise Exception("Chapters not checked yet!")
-
         if params_dic["download_option"] == "Range":
             start_at = params_dic["start_at"]
             end_at = params_dic["end_at"]
