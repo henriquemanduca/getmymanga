@@ -98,6 +98,7 @@ class DownloadMangaseeService:
             except Exception as e:
                 raise Exception(f"Error on get chapters!\n{e}")
 
+        self.manga_repository.update(name=self.manga_name, available_directories=last_directory)
         return self._get_manga_dict()
 
     async def _get_download_url_items(
@@ -178,7 +179,7 @@ class DownloadMangaseeService:
             last_downloaded = chapter
 
         # Save the the latest one chosen
-        self.manga_repository.update(name=self.manga_name, last_downloaded=last_downloaded)
+        self.manga_repository.update(name=self.manga_name, last_downloaded=last_downloaded, last_directory=directory)
 
         await self._chunk_routines(coroutines=coroutines)
 

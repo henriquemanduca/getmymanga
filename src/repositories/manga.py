@@ -20,26 +20,32 @@ class MangaRepository:
         except Manga.DoesNotExist:
             return None
 
-    def get_by_name(self, name: str) -> Any | None:
+    def get_by_name(self, name: str) -> Manga | None:
         try:
             return Manga.get(Manga.name == name)
         except Manga.DoesNotExist:
             return None
 
-    def update(self, id: int, **kwargs) -> Manga | None:
+    def update(self, **kwargs) -> Manga | None:
         manga = None
 
-        if id:
+        if id := kwargs.get("id"):
             manga = self.get_by_id(id)
-        elif kwargs.get("name"):
-            manga = self.get_by_name(kwargs.get("name"))
+        elif name := kwargs.get("name"):
+            manga = self.get_by_name(name)
 
         if manga:
             if name := kwargs.get("name"):
                 manga.name = name
 
+            if last_directory := kwargs.get("last_directory"):
+                manga.last_directory = last_directory
+
             if last_downloaded := kwargs.get("last_downloaded"):
                 manga.last_downloaded = last_downloaded
+
+            if available_directories := kwargs.get("available_directories"):
+                manga.available_directories = available_directories
 
             manga.save()
             return manga

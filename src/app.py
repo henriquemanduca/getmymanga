@@ -118,7 +118,6 @@ class App(ctk.CTk):
             self,
             state="readonly",
             values=["1"],
-            command=self._dir_combobox,
             variable=self.dir_option_var
         )
         self.dir_combobox.grid(row=row, column=0, columnspan=1, padx=5, pady=5, sticky="we")
@@ -144,7 +143,7 @@ class App(ctk.CTk):
         self.checkbox = ctk.CTkCheckBox(self, text="Compress to .cbr", variable=self.checkbox_compress)
         self.checkbox.grid(row=row, column=0, columnspan=2)
 
-        self.download_button = ctk.CTkButton(self,  text="Download", state="disabled", command=lambda: self.download_chapters())
+        self.download_button = ctk.CTkButton(self, text="Download", state="disabled", command=lambda: self.download_chapters())
         self.download_button.grid(row=row, column=3, columnspan=2, padx=5, pady=5, sticky="we")
 
         # define the grid
@@ -165,18 +164,11 @@ class App(ctk.CTk):
         else:
             fields.configure(state="disabled")
 
-    def _dir_combobox(self, event=None):
-        last_chapter = self.available_directories[event]["last_chapter"]
-        self._set_range(1, last_chapter)
-
     def _info_combobox(self, event=None):
         if event == "Range":
             self._set_normal_state([self.chap_start, self.chap_end])
         else:
             self._set_disabled_state([self.chap_start, self.chap_end])
-
-    def _history_combobox(self, event=None):
-        pass
 
     def _default_state(self):
         # self.manga_name_var.set("")
@@ -210,6 +202,18 @@ class App(ctk.CTk):
         mangas = self.manga_repository.get_all()
         self.history_combobox.configure(values=[manga.name for manga in mangas])
 
+    def _history_combobox(self, event=None):
+        if name := event:
+            manga = self.manga_repository.get_by_name(name)
+            self._set_directory(manga.last_directory)
+
+            next_chapter = manga.last_downloaded + 1
+            next_range = next_chapter + 5
+
+            self._set_range(next_chapter, next_range)
+            self._set_directory(manga.available_directories)
+            self.dir_option_var.set(manga.last_directory)
+
     def _set_directory(self, directories: int):
          self.dir_combobox.configure(values=[str(i) for i in range(1, directories + 1)])
 
@@ -234,10 +238,8 @@ class App(ctk.CTk):
             chapters_count = manga_dict["chapters_count"]
 
             self._set_directory(len(self.available_directories))
-            self._set_range(1, self.available_directories["1"]["last_chapter"])
 
             message = (f"{direcotory_count} directories founded with {chapters_count} chapters available!")
-
         except requests.exceptions.ConnectionError:
             mbox(title="Warning", message="Could not connect to server", icon="warning", option_1="Cancel")
         except Exception as e:
@@ -252,8 +254,6 @@ class App(ctk.CTk):
 
     def _download_files(self):
         self._down_state()
-        message = ""
-
         try:
             params_dic = {
                 "output": self.folder_var.get(),
@@ -269,7 +269,6 @@ class App(ctk.CTk):
         except Exception as e:
             mbox(title="Error", message=f"Something went wrong.\n{e}")
         finally:
-            # self.info_label.configure(text=message)
             self._default_state()
 
     def download_chapters(self):
