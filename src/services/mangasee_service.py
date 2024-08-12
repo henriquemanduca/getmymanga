@@ -1,5 +1,4 @@
 import asyncio
-import subprocess
 import os
 import aiofiles
 import json
@@ -15,7 +14,7 @@ from src.services.utils import (remove_leading_zeros,
                                 add_leading_zeros)
 
 
-class DownloadMangaseeService:
+class MangaseeService:
     HOST = "https://mangasee123.com"
 
     def __init__(self):

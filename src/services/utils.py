@@ -89,3 +89,6 @@ def create_cbr(folder_path):
 
     shutil.rmtree(folder_path)
 
+
+def get_sources():
+    return ["Mangasee123", "Mangaonline"]

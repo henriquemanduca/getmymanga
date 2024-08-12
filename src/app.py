@@ -7,9 +7,11 @@ import requests
 
 from CTkMessagebox import CTkMessagebox as mbox
 
-from src.services.download_mangasse import DownloadMangaseeService
-from src.services.utils import get_default_download_folder
 from src.repositories.manga import MangaRepository
+from src.services.mangasee_service import MangaseeService
+from src.services.mangaonline_service import MangaOnlineService
+from src.services.utils import get_default_download_folder, get_sources
+
 
 logging.basicConfig()
 LOGGER = logging.getLogger()
@@ -34,6 +36,7 @@ class App(ctk.CTk):
         self.init_vars()
         self.create_widgets()
         self._get_history()
+        self._source_combobox(get_sources()[0])
 
     def init_vars(self):
         if "nt" == os.name:
@@ -43,11 +46,12 @@ class App(ctk.CTk):
             self.tk.call('wm', 'iconphoto', self._w, img)
 
         self.manga_repository = MangaRepository()
-        self.download = DownloadMangaseeService()
+        self.download_service = None
         self.app_logo = tk.PhotoImage(file="./resources/image.png")
         self.dir_option_var = tk.StringVar()
         self.download_option_var = tk.StringVar()
         self.history_option_var = tk.StringVar()
+        self.source_option_var = tk.StringVar(value=get_sources()[0])
 
         self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}")
         self.manga_name_var = tk.StringVar(value="")
@@ -81,14 +85,22 @@ class App(ctk.CTk):
         history_label = ctk.CTkLabel(self, text="History:")
         history_label.grid(row=row, column=0, padx=5, pady=0, sticky="w")
 
+        history_label = ctk.CTkLabel(self, text="Source:")
+        history_label.grid(row=row, column=3, padx=5, pady=0, sticky="w")
+
         row += 1
         self.history_combobox = ctk.CTkComboBox(
             self, state="readonly", values=[], command=self._history_combobox, variable=self.history_option_var
         )
         self.history_combobox.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="we")
 
+        self.source_combobox = ctk.CTkComboBox(
+            self, state="readonly", values=get_sources(), command=self._source_combobox, variable=self.source_option_var
+        )
+        self.source_combobox.grid(row=row, column=3, columnspan=1, padx=5, pady=5, sticky="we")
+
         self.load_button = ctk.CTkButton(self,  text="Load Chapters", command=lambda: self.load_chapters())
-        self.load_button.grid(row=row, column=3, columnspan=2, padx=5, pady=5, sticky="we")
+        self.load_button.grid(row=row, column=4, columnspan=1, padx=5, pady=5, sticky="we")
 
         row += 1
         self.progress_bar = ctk.CTkProgressBar(self)
@@ -171,10 +183,10 @@ class App(ctk.CTk):
             self._set_disabled_state([self.chap_start, self.chap_end])
 
     def _default_state(self):
-        # self.manga_name_var.set("")
         self.progress_bar.stop()
         self._set_normal_state([
             self.history_combobox,
+            self.source_combobox,
             self.load_button,
             self.info_combobox,
             self.download_button,
@@ -189,6 +201,7 @@ class App(ctk.CTk):
         self._set_disabled_state([
             self.load_button,
             self.history_combobox,
+            self.source_combobox,
             self.info_combobox,
             self.download_button,
             self.checkbox]
@@ -214,6 +227,12 @@ class App(ctk.CTk):
             self._set_directory(manga.available_directories)
             self.dir_option_var.set(manga.last_directory)
 
+    def _source_combobox(self, event=None):
+        if event == get_sources()[0]:
+            self.download_service = MangaseeService()
+        else:
+            self.download_service = MangaOnlineService()
+
     def _set_directory(self, directories: int):
          self.dir_combobox.configure(values=[str(i) for i in range(1, directories + 1)])
 
@@ -231,7 +250,7 @@ class App(ctk.CTk):
         message = ""
 
         try:
-            manga_dict = self.download.find_directories(manga_name)
+            manga_dict = self.download_service.find_directories(manga_name)
             self.available_directories = manga_dict["directories"]
 
             direcotory_count = len(self.available_directories)
@@ -264,7 +283,7 @@ class App(ctk.CTk):
                 "cbr": self.checkbox_compress.get()
             }
 
-            self.download.get_files(params_dic)
+            self.download_service.get_files(params_dic)
             mbox(title="Info", message=f"Save it on {params_dic['output']}!")
         except Exception as e:
             mbox(title="Error", message=f"Something went wrong.\n{e}")
