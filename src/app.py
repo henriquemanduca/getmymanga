@@ -39,7 +39,6 @@ class App(ctk.CTk):
         self._get_history()
         self._source_combobox(get_sources()[1])
 
-
     def init_vars(self):
         if "nt" == os.name:
             self.wm_iconbitmap(bitmap="./resources/icon.ico")
@@ -74,7 +73,7 @@ class App(ctk.CTk):
         option_label = ctk.CTkLabel(self, text="Save on:")
         option_label.grid(row=row, column=0, padx=5, pady=0, sticky="w")
 
-        manga_label = ctk.CTkLabel(self, text="Manga name:")
+        manga_label = ctk.CTkLabel(self, text="Name (from URL):")
         manga_label.grid(row=row, column=3, padx=5, pady=0, sticky="w")
 
         row += 1
@@ -102,7 +101,7 @@ class App(ctk.CTk):
         )
         self.source_combobox.grid(row=row, column=3, columnspan=1, padx=5, pady=5, sticky="we")
 
-        self.load_button = ctk.CTkButton(self,  text="Load Chapters", command=lambda: self.load_chapters())
+        self.load_button = ctk.CTkButton(self,  text="Search Chapters", command=lambda: self.search_chapters())
         self.load_button.grid(row=row, column=4, columnspan=1, padx=5, pady=5, sticky="we")
 
         row += 1
@@ -244,7 +243,7 @@ class App(ctk.CTk):
         manga_history = self.history_option_var.get()
 
         if manga_name == "" and manga_history == "":
-            mbox(title="Info", message="Inform the manga name or select one from history!")
+            mbox(title="Info", message="Inform a manga name or select from history!")
             return
         else:
             manga_name = manga_name if manga_name != "" else manga_history
@@ -253,7 +252,7 @@ class App(ctk.CTk):
         message = ""
 
         try:
-            manga_dict = self.download_service.find_directories(manga_name)
+            manga_dict = self.download_service.search_chapters(manga_name)
             self.available_directories = manga_dict["directories"]
 
             direcotory_count = len(self.available_directories)
@@ -265,13 +264,13 @@ class App(ctk.CTk):
         except requests.exceptions.ConnectionError:
             mbox(title="Warning", message="Could not connect to server", icon="warning", option_1="Cancel")
         except Exception as e:
-            mbox(title="Error", message=f"Something went wrong.\n\n{e}", icon="cancel")
+            mbox(title="Error", message=f"Something went wrong.\n\n{e}", icon="cancel", option_1="Close")
         finally:
             self.info_label.configure(text=message)
             self._get_history()
             self._default_state()
 
-    def load_chapters(self):
+    def search_chapters(self):
         threading.Thread(target=lambda: self._get_directories(), args=(), daemon=True).start()
 
     def _download_files(self):

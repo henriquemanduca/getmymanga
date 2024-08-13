@@ -64,9 +64,9 @@ class MangaseeService:
         if chapter_details_search:
             return chapter_details_search.groups()[0]
         else:
-            raise Exception(f"No chapters found on \n {url} !")
+            raise Exception(f"No chapters found on \n {url}.")
 
-    def find_directories(self, manga_name: str) -> dict:
+    def search_chapters(self, manga_name: str) -> dict:
         self.manga_name = manga_name
 
         if manga_dict := self._get_manga_dict():
@@ -156,7 +156,7 @@ class MangaseeService:
             raise Exception("Timeout in downloading chapter %s!", chapter)
 
         except Exception as e:
-            raise Exception(f"Error on download and save chapter!\n{e}")
+            raise Exception(f"Error on download and save chapter!\n\n{e}")
 
     async def _download_chapters(self, output: str, chapter_details: typing.Iterable) -> None:
         session = requests_html.AsyncHTMLSession()

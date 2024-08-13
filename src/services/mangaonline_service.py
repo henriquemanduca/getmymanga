@@ -113,12 +113,11 @@ class MangaOnlineService(BaseService):
         directory = self._get_directory(params_dic["directory_option"])
 
         for ch in range(start_at, end_at + 1):
-            chapter = directory["chapters"].get(ch)
-            if chapter:
+            if chapter := directory["chapters"].get(ch):
                 target_chapters.append(chapter)
 
         if len(target_chapters) == 0:
-            raise Exception(f"Chapters not found on this directory!.")
+            raise Exception(f"Chapters not found on this directory.")
 
         asyncio.run(self._download_chapters(download_folder, target_chapters))
 
@@ -132,20 +131,27 @@ class MangaOnlineService(BaseService):
         if chapter_details_search:
             return sorted(chapter_details_search, key=lambda x: int(x[1]))
         else:
-            raise Exception(f"No chapters found on \n {url} !")
+            raise Exception(f"No chapters found on\n{url}.")
 
-    def find_directories(self, manga_name: str) -> dict:
+    def search_chapters(self, manga_name: str) -> dict:
         if manga_dict := self._get_manga_dict(manga_name):
             return manga_dict
 
         chapters = self._get_chapter_details()
         chapter_aux = 1
+        directory = 1
+        has_two_directories = False
 
         for chapter_detail in chapters:
             try:
                 manga_dict = self._get_manga_dict()
 
-                directory = "1" if int(chapter_detail[1]) < 0 else "2"
+                if int(chapter_detail[1]) < 0:
+                    has_two_directories = True
+
+                if has_two_directories and int(chapter_detail[1]) > 0:
+                    directory = 2
+
                 chapter = int(remove_leading_zeros(chapter_detail[1]))
 
                 if chapter < 0:

@@ -86,7 +86,6 @@ def create_cbr(folder_path):
                     cbr_file.write(str(file_path), str(os.path.relpath(str(file_path), str(folder_path))))
     else:
         subprocess.run(["zip", "-r", f"{folder_path}.cbr", folder_path])
-
     # shutil.rmtree(folder_path)
 
 

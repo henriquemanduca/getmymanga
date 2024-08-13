@@ -8,11 +8,15 @@ Connection.get_db().create_tables([Manga])
 
 
 class MangaRepository:
+
     def create(self, name: str) -> Manga:
         if manga := self.get_by_name(name):
             return manga
 
-        return Manga.create(name=name, last_downloaded=0)
+        return Manga.create(name=name,
+                            last_directory=1,
+                            last_downloaded=1,
+                            available_directories=1)
 
     def get_by_id(self, id: int) -> Any | None:
         try:
