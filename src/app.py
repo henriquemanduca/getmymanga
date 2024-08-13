@@ -22,6 +22,7 @@ ctk.set_default_color_theme("blue")
 
 
 class App(ctk.CTk):
+
     def __init__(self):
         super().__init__()
         self.title("Get my manga!")
@@ -36,7 +37,8 @@ class App(ctk.CTk):
         self.init_vars()
         self.create_widgets()
         self._get_history()
-        self._source_combobox(get_sources()[0])
+        self._source_combobox(get_sources()[1])
+
 
     def init_vars(self):
         if "nt" == os.name:
@@ -50,8 +52,9 @@ class App(ctk.CTk):
         self.app_logo = tk.PhotoImage(file="./resources/image.png")
         self.dir_option_var = tk.StringVar()
         self.download_option_var = tk.StringVar()
-        self.history_option_var = tk.StringVar()
-        self.source_option_var = tk.StringVar(value=get_sources()[0])
+        # self.history_option_var = tk.StringVar()
+        self.history_option_var = tk.StringVar(value="Berserk")
+        self.source_option_var = tk.StringVar(value=get_sources()[1])
 
         self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}")
         self.manga_name_var = tk.StringVar(value="")

@@ -7,8 +7,6 @@ import typing
 
 from src.services.base_service import BaseService
 from src.services.utils import (remove_leading_zeros,
-                                get_default_download_folder,
-                                create_folder,
                                 create_cbr,
                                 add_leading_zeros)
 
@@ -20,37 +18,19 @@ class MangaOnlineService(BaseService):
         super().__init__()
 
     def _get_directories_count(self,) -> int:
-        return len(self._get_manga_dict()["directories"])
+        return 1
 
-    def get_manga_page_url(self, directory: int, chapter: str, page: str) -> str:
-        manga_name = self.manga_name
-        if directory == 1:
-            return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
+    def _get_manga_url(self,) -> str:
+        # https://mangaonline.biz/manga/berserk/
+        return f"{self.HOST}/manga/{self.manga_name}/"
 
-        return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-{page}.html"
-
-    def _get_page_image_url(self, host: str, directory: int, chapter: int, page: int) -> str:
+    def _get_page_image_url(self, chapter: int, page: int) -> str:
+        # https://mangaonline.biz/capitulo/berserk-capitulo-373/
         schapter = add_leading_zeros(chapter, 4)
         spage = add_leading_zeros(page, 3)
         manga_name = self.manga_name
 
-        if self._get_directories_count() > 1:
-            return f"https://{host}/manga/{manga_name}/Part{directory}/{schapter}-{spage}.png"
-
-        return f"https://{host}/manga/{manga_name}/{schapter}-{spage}.png"
-
-    def _get_chapter_details(self,):
-        url = self.get_manga_page_url(1, "1", "1")
-        session = requests_html.HTMLSession()
-        resp = session.get(url)
-        content = resp.content.decode("utf-8")
-        chapter_details_search = re.compile("vm.CHAPTERS = (.*);").search(content)
-
-        if chapter_details_search:
-            return chapter_details_search.groups()[0]
-        else:
-            raise Exception(f"No chapters found on \n {url} !")
-
+        return f"{self.HOST}/capitulo/{manga_name}-{schapter}-{spage}.png"
 
     async def _get_download_url_items(
         self,
@@ -134,20 +114,6 @@ class MangaOnlineService(BaseService):
 
         await self._chunk_routines(coroutines=coroutines)
 
-    async def _chunk_routines(self, coroutines):
-        if len(coroutines) > 10:
-            for chunk in [coroutines[i:i + 10] for i in range(0, len(coroutines), 10)]:
-                await asyncio.gather(*chunk)
-        else:
-            await asyncio.gather(*coroutines)
-
-    def _get_folder(self, folder: str) -> str:
-        temp_path = folder if folder != "" else get_default_download_folder()
-        return create_folder(os.path.join(temp_path, self.manga_name))
-
-    def _get_directory(self, directory: int) -> dict:
-        return self._get_manga_dict()["directories"][str(directory)]
-
     def get_files(self, params_dic):
         if params_dic["download_option"] == "Range":
             start_at = params_dic["start_at"]
@@ -168,5 +134,47 @@ class MangaOnlineService(BaseService):
             if chapter:
                 target_chapters.append(chapter)
 
+        if len(target_chapters) == 0:
+            raise Exception(f"\nChapters not found on this directory!.")
+
         asyncio.run(self._download_chapters(download_folder, target_chapters))
 
+    def _get_chapter_details(self,):
+        url = self._get_manga_url()
+        session = requests_html.HTMLSession()
+        resp = session.get(url)
+        content = resp.content.decode("utf-8")
+        chapter_details_search = re.compile(r'<a href="([^"]+)">\s*Capítulo\s*(-?\d+)<span class="date">([^<]+)</span>').findall(content)
+
+        if chapter_details_search:
+            return sorted(chapter_details_search, key=lambda x: int(x[1]))
+        else:
+            raise Exception(f"No chapters found on \n {url} !")
+
+    def find_directories(self, manga_name: str) -> dict:
+        if manga_dict := self._get_manga_dict(manga_name):
+            return manga_dict
+
+        chapters = self._get_chapter_details()
+
+        for chapter_detail in chapters:
+            try:
+                manga_dict = self._get_manga_dict()
+
+                directory = "1" if int(chapter_detail[1]) < 0 else "2"
+                chapter = abs(int(remove_leading_zeros(chapter_detail[1])))
+
+                if manga_dict["directories"].get(directory) is None:
+                    manga_dict["directories"][directory] = { "chapters": {} }
+
+                manga_dict["directories"][directory]["chapters"][chapter] = { "url": chapter_detail[0] }
+                manga_dict["directories"][directory]["last_chapter"] = chapter
+                manga_dict["chapters_count"] += 1
+
+                last_directory = directory
+            except Exception as e:
+                raise Exception(f"Error on get chapters!\n{e}")
+
+        self.manga_repository.update(name=self.manga_name, available_directories=last_directory)
+
+        return self._get_manga_dict()
