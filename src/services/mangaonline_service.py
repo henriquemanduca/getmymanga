@@ -21,41 +21,28 @@ class MangaOnlineService(BaseService):
         return 1
 
     def _get_manga_url(self,) -> str:
-        # https://mangaonline.biz/manga/berserk/
         return f"{self.HOST}/manga/{self.manga_name}/"
 
-    def _get_page_image_url(self, chapter: int, page: int) -> str:
-        # https://mangaonline.biz/capitulo/berserk-capitulo-373/
-        schapter = add_leading_zeros(chapter, 4)
-        spage = add_leading_zeros(page, 3)
-        manga_name = self.manga_name
-
-        return f"{self.HOST}/capitulo/{manga_name}-{schapter}-{spage}.png"
-
-    async def _get_download_url_items(
+    async def _get_url_items(
         self,
         session,
-        directory: int,
         chapter: int,
-        pages: int
+        chapter_url: str
     ) -> list:
         items = []
-        url = self.get_manga_page_url(directory, remove_leading_zeros(str(chapter)), "1")
 
-        resp = await session.request(method="GET", url=url)
+        resp = await session.request(method="GET", url=chapter_url)
         content = resp.content.decode("utf-8")
-        host_pattern = re.compile('vm.CurPathName = "(.*)";')
-        host_search = host_pattern.search(content)
+        images_search = re.compile(r'src="(https://mangaonline.biz/wp-content/uploads/[^"]+)"').findall(content)
 
-        if host_search:
-            host = host_search.groups()[0]
-        else:
-            raise Exception("No match for vm.CurPathName found!")
+        if len(images_search) == 0:
+            raise Exception("No match found!")
 
-        for page in range(1, int(pages) + 1):
-            download_url = self._get_page_image_url(host, directory, chapter, page)
+        page = 1
+        for image_url in images_search:
             sub_folder = os.path.join(add_leading_zeros(chapter, 4), f"{add_leading_zeros(page, 3)}.png")
-            items.append({"download_url": download_url, "sub_folder": sub_folder})
+            items.append({"download_url": image_url, "sub_folder": sub_folder})
+            page += 1
 
         return items
 
@@ -63,13 +50,12 @@ class MangaOnlineService(BaseService):
         self,
         session: requests_html.AsyncHTMLSession,
         output: str,
-        directory: int,
         chapter: int,
-        pages: int
+        chapter_url: str,
     ) -> None:
         folder = ""
         try:
-            items = await self._get_download_url_items(session, directory, chapter, pages)
+            items = await self._get_url_items(session, chapter, chapter_url)
             for item in items:
                 download_url = item["download_url"]
                 save_path = os.path.join(output, item["sub_folder"])
@@ -88,7 +74,7 @@ class MangaOnlineService(BaseService):
             raise Exception("Timeout in downloading chapter %s!", chapter)
 
         except Exception as e:
-            raise Exception(f"Error on download and save chapter!\n{e}")
+            raise Exception(f"Error on download and save chapter!\n\n{e}")
 
     async def _download_chapters(self, output: str, chapter_details: typing.Iterable) -> None:
         session = requests_html.AsyncHTMLSession()
@@ -96,21 +82,18 @@ class MangaOnlineService(BaseService):
         last_downloaded = 0
 
         for ch_detail in chapter_details:
-            chapter = ch_detail["Chapter"][1:-1]
-            directory = ch_detail["Directory"][4:]
-            directory = int(directory) if directory != "" else 1
-            pages = int(ch_detail["Page"])
+            chapter = ch_detail["Chapter"]
+            chapter_url = ch_detail["URL"]
 
-            if not os.path.isdir(os.path.join(output, chapter)):
-                os.mkdir(os.path.join(output, chapter))
+            self._override_chapter_folder(output, chapter)
 
             coroutines.append(
-                self._download_and_save_chapter(session, output, directory, chapter, pages),
+                self._download_and_save_chapter(session, output, chapter, chapter_url),
             )
             last_downloaded = chapter
 
         # Save the the latest one chosen
-        self.manga_repository.update(name=self.manga_name, last_downloaded=last_downloaded, last_directory=directory)
+        self.manga_repository.update(name=self.manga_name, last_downloaded=last_downloaded)
 
         await self._chunk_routines(coroutines=coroutines)
 
@@ -135,7 +118,7 @@ class MangaOnlineService(BaseService):
                 target_chapters.append(chapter)
 
         if len(target_chapters) == 0:
-            raise Exception(f"\nChapters not found on this directory!.")
+            raise Exception(f"Chapters not found on this directory!.")
 
         asyncio.run(self._download_chapters(download_folder, target_chapters))
 
@@ -156,18 +139,26 @@ class MangaOnlineService(BaseService):
             return manga_dict
 
         chapters = self._get_chapter_details()
+        chapter_aux = 1
 
         for chapter_detail in chapters:
             try:
                 manga_dict = self._get_manga_dict()
 
                 directory = "1" if int(chapter_detail[1]) < 0 else "2"
-                chapter = abs(int(remove_leading_zeros(chapter_detail[1])))
+                chapter = int(remove_leading_zeros(chapter_detail[1]))
+
+                if chapter < 0:
+                    chapter = chapter_aux
+                    chapter_aux += 1
 
                 if manga_dict["directories"].get(directory) is None:
                     manga_dict["directories"][directory] = { "chapters": {} }
 
-                manga_dict["directories"][directory]["chapters"][chapter] = { "url": chapter_detail[0] }
+                manga_dict["directories"][directory]["chapters"][chapter] = {
+                    "Chapter": str(chapter),
+                    "URL": chapter_detail[0]
+                }
                 manga_dict["directories"][directory]["last_chapter"] = chapter
                 manga_dict["chapters_count"] += 1
 

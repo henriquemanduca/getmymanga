@@ -265,7 +265,7 @@ class App(ctk.CTk):
         except requests.exceptions.ConnectionError:
             mbox(title="Warning", message="Could not connect to server", icon="warning", option_1="Cancel")
         except Exception as e:
-            mbox(title="Error", message=f"Something went wrong.\n{e}", icon="cancel")
+            mbox(title="Error", message=f"Something went wrong.\n\n{e}", icon="cancel")
         finally:
             self.info_label.configure(text=message)
             self._get_history()
@@ -287,9 +287,9 @@ class App(ctk.CTk):
             }
 
             self.download_service.get_files(params_dic)
-            mbox(title="Info", message=f"Save it on {params_dic['output']}!")
+            mbox(title="Info", message=f"Save it on {params_dic['output']}.")
         except Exception as e:
-            mbox(title="Error", message=f"Something went wrong.\n{e}")
+            mbox(title="Error", message=f"Something went wrong!\n\n{e}")
         finally:
             self._default_state()
 

@@ -38,6 +38,7 @@ class MangaRepository:
             if name := kwargs.get("name"):
                 manga.name = name
 
+            manga.last_directory = 1
             if last_directory := kwargs.get("last_directory"):
                 manga.last_directory = last_directory
 

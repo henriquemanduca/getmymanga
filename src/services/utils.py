@@ -87,7 +87,7 @@ def create_cbr(folder_path):
     else:
         subprocess.run(["zip", "-r", f"{folder_path}.cbr", folder_path])
 
-    shutil.rmtree(folder_path)
+    # shutil.rmtree(folder_path)
 
 
 def get_sources():
