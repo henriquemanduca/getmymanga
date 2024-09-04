@@ -1,0 +1,11 @@
+asyncio==3.4.3
+customtkinter==5.2.2
+CTkMessagebox
+aiofiles
+aiohttp
+requests
+requests-html
+types-aiofiles
+types-requests
+lxml_html_clean
+peewee
