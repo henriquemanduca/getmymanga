@@ -111,6 +111,10 @@ class MangaOnlineService(BaseService):
         target_chapters = []
 
         directory = self._get_directory(params_dic["directory_option"])
+        last_chapter = directory["last_chapter"]
+
+        if start_at > last_chapter:
+            raise Exception(f"The last chapters for this directory is {last_chapter}!")
 
         for ch in range(start_at, end_at + 1):
             if chapter := directory["chapters"].get(ch):
