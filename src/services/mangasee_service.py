@@ -11,7 +11,8 @@ from src.services.utils import (remove_leading_zeros,
                                 get_default_download_folder,
                                 create_folder,
                                 create_cbr,
-                                add_leading_zeros)
+                                add_leading_zeros,
+                                calculate_md5)
 
 
 class MangaseeService:
@@ -141,12 +142,24 @@ class MangaseeService:
             for item in items:
                 download_url = item["download_url"]
                 save_path = os.path.join(output, item["sub_folder"])
+
                 if os.path.isfile(save_path):
                     continue
 
                 resp = await session.request(method="GET", url=download_url)
+                md5_resp = await calculate_md5(resp.content)
+
                 async with aiofiles.open(save_path, "wb") as file:
                     await file.write(resp.content)
+
+                async with aiofiles.open(save_path, "rb") as file:
+                    saved_file_content = await file.read()
+                    md5_file = await calculate_md5(saved_file_content)
+
+                # Compare the two MD5 hashes
+                if not md5_resp == md5_file:
+                    raise Exception(f"MD5 hashes do not match. The file might be corrupted.n\{save_path}!")
+
 
             if self.compress_to_cbr:
                 folder = os.path.join(output, add_leading_zeros(chapter, 4))
