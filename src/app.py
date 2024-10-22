@@ -256,7 +256,7 @@ class App(ctk.CTk):
 
             self._set_directory(len(self.available_directories))
 
-            message = (f"{direcotory_count} directories founded with {chapters_count} chapters available!")
+            message = f"{direcotory_count} directories founded with {chapters_count} chapters available!"
         except requests.exceptions.ConnectionError:
             mbox(title="Warning", message="Could not connect to server", icon="warning", option_1="Cancel")
         except Exception as e:
