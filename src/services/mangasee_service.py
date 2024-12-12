@@ -20,7 +20,7 @@ def get_directory_value(directory: str):
         return directory[1:], directory[0:1]
     if len(directory) > 2:
         return directory[4:], directory[0:3]
-    return ""
+    return "", None
 
 
 async def chunk_routines(coroutines):
@@ -102,10 +102,11 @@ class MangaseeService:
             try:
                 manga_dict = self._get_manga_dict()
 
-                directory, prefix = get_directory_value(chapter_detail["Directory"]) if chapter_detail["Directory"] != "" else last_directory
+                directory, prefix = get_directory_value(chapter_detail["Directory"]) if chapter_detail["Directory"] != "" else last_directory, None
                 chapter = int(remove_leading_zeros(chapter_detail["Chapter"][1:-1]))
 
-                manga_dict["directory_prefix"] = prefix
+                manga_dict["directory_prefix"] = prefix if prefix else ""
+
                 if manga_dict["directories"].get(directory) is None:
                     manga_dict["directories"][directory] = { "chapters": {} }
 
@@ -177,8 +178,7 @@ class MangaseeService:
 
                 # Compare the two MD5 hashes
                 if not md5_resp == md5_file:
-                    raise Exception(f"MD5 hashes do not match. The file might be corrupted.n\{save_path}!")
-
+                    raise Exception(f"MD5 hashes do not match. The file might be corrupted.\n{save_path}!")
 
             if self.compress_to_cbr:
                 folder = os.path.join(output, add_leading_zeros(chapter, 4))
