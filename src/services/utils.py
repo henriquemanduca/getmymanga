@@ -2,7 +2,7 @@ import os
 import platform
 import zipfile
 import subprocess
-import shutil
+import hashlib
 
 
 def remove_leading_zeros(num: str) -> str:
@@ -87,6 +87,13 @@ def create_cbr(folder_path):
     else:
         subprocess.run(["zip", "-r", f"{folder_path}.cbr", folder_path])
     # shutil.rmtree(folder_path)
+
+
+
+async def calculate_md5(content):
+    md5_hash = hashlib.md5()
+    md5_hash.update(content)
+    return md5_hash.hexdigest()
 
 
 def get_sources():
