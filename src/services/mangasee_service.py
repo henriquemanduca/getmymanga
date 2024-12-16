@@ -55,27 +55,25 @@ class MangaseeService:
     def _get_directories_count(self,) -> int:
         return len(self._get_manga_dict()["directories"])
 
-    def get_manga_page_url(self, directory: int, chapter: str, page: str) -> str:
+    def _get_manga_page_url(self, params: dict) -> str:
         manga_name = self.manga_name
+        directory = params["directory"]
+        chapter = remove_leading_zeros(params["chapter"])
+
+        if "sub" in params and params["sub"]:
+            chapter = f"{chapter[:-1]}.{chapter[-1:]}"
+
         if directory == 1:
-            return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
+            return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-page-1.html"
 
-        return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-{page}.html"
+        return f"{self.HOST}/read-online/{manga_name}-chapter-{chapter}-index-{directory}-page-1.html"
 
-    def _get_page_image_url(self, host: str, directory: int, chapter: int, page: int) -> str:
-        schapter = add_leading_zeros(chapter, 4)
-        spage = add_leading_zeros(page, 3)
-
-        manga_name = self.manga_name
-        directory_prefix = self.manga_dict[self.manga_name]["directory_prefix"]
-
-        if self._get_directories_count() > 1:
-            return f"https://{host}/manga/{manga_name}/{directory_prefix}{directory}/{schapter}-{spage}.png"
-
-        return f"https://{host}/manga/{manga_name}/{schapter}-{spage}.png"
-
-    def _get_chapter_details(self,):
-        url = self.get_manga_page_url(1, "1", "1")
+    def _get_search_details(self,):
+        params = {
+            "directory": 1,
+            "chapter": "1",
+        }
+        url = self._get_manga_page_url(params)
         session = requests_html.HTMLSession()
         resp = session.get(url)
         content = resp.content.decode("utf-8")
@@ -93,43 +91,60 @@ class MangaseeService:
             return manga_dict
 
         self._set_manga_dict(manga_name)
-        chapter_details_str = self._get_chapter_details()
+        chapter_details_str = self._get_search_details()
 
         last_directory = "1"
+        last_chapter = 0
         chapters = json.loads(chapter_details_str)
 
         for chapter_detail in chapters:
             try:
                 manga_dict = self._get_manga_dict()
-
                 directory, prefix = get_directory_value(chapter_detail["Directory"]) if chapter_detail["Directory"] != "" else last_directory, None
+
                 chapter = int(remove_leading_zeros(chapter_detail["Chapter"][1:-1]))
+                sub_chap = int(chapter_detail["Chapter"][-1])
 
                 manga_dict["directory_prefix"] = prefix if prefix else ""
 
                 if manga_dict["directories"].get(directory) is None:
                     manga_dict["directories"][directory] = { "chapters": {} }
 
-                manga_dict["directories"][directory]["chapters"][chapter] = chapter_detail
+                if sub_chap > 0 and chapter == last_chapter:
+                    manga_dict["directories"][directory]["chapters"][last_chapter]["sub"] = chapter_detail
+                else:
+                    manga_dict["directories"][directory]["chapters"][chapter] = chapter_detail
+                    manga_dict["chapters_count"] += 1
+
                 manga_dict["directories"][directory]["last_chapter"] = chapter
-                manga_dict["chapters_count"] += 1
 
                 last_directory = directory
+                last_chapter = chapter
             except Exception as e:
                 raise Exception(f"Error on get chapters!\n{e}")
 
         self.manga_repository.update(name=self.manga_name, available_directories=last_directory)
         return self._get_manga_dict()
 
-    async def _get_download_url_items(
+    def _get_url_image(self, host: str, directory: int, chapter: int, page: int) -> str:
+        str_chapter = add_leading_zeros(chapter, 4)
+        spage = add_leading_zeros(page, 3)
+
+        manga_name = self.manga_name
+        directory_prefix = self.manga_dict[self.manga_name]["directory_prefix"]
+
+        if self._get_directories_count() > 1:
+            return f"https://{host}/manga/{manga_name}/{directory_prefix}{directory}/{str_chapter}-{spage}.png"
+
+        return f"https://{host}/manga/{manga_name}/{str_chapter}-{spage}.png"
+
+    async def _get_items(
         self,
         session,
-        directory: int,
-        chapter: int,
-        pages: int
+        params: dict
     ) -> list:
         items = []
-        url = self.get_manga_page_url(directory, remove_leading_zeros(str(chapter)), "1")
+        url = self._get_manga_page_url(params)
 
         resp = await session.request(method="GET", url=url)
         content = resp.content.decode("utf-8")
@@ -141,27 +156,29 @@ class MangaseeService:
         else:
             raise Exception("No match for vm.CurPathName found!")
 
-        for page in range(1, int(pages) + 1):
-            download_url = self._get_page_image_url(host, directory, chapter, page)
-            sub_folder = os.path.join(add_leading_zeros(chapter, 4), f"{add_leading_zeros(page, 3)}.png")
+        for page in range(1, int(params["pages"]) + 1):
+            chapter = params["chapter"]
+
+            if "sub" in params and params["sub"]:
+                chapter = f"{params["chapter"][:-1]}.{params["chapter"][-1:]}"
+
+            download_url = self._get_url_image(host, params["directory"], chapter, page)
+            sub_folder = os.path.join(add_leading_zeros(params["chapter"], 4), f"{add_leading_zeros(page, 3)}.png")
             items.append({"download_url": download_url, "sub_folder": sub_folder})
 
         return items
 
-    async def _save_chapter_file(
+    async def _download_and_save_files(
         self,
         session: requests_html.AsyncHTMLSession,
-        output: str,
-        directory: int,
-        chapter: int,
-        pages: int
+        params: dict
     ) -> None:
         try:
-            items = await self._get_download_url_items(session, directory, chapter, pages)
+            items = await self._get_items(session, params)
 
             for item in items:
                 download_url = item["download_url"]
-                save_path = os.path.join(output, item["sub_folder"])
+                save_path = os.path.join(params["output"], item["sub_folder"])
 
                 if os.path.isfile(save_path):
                     continue
@@ -181,34 +198,55 @@ class MangaseeService:
                     raise Exception(f"MD5 hashes do not match. The file might be corrupted.\n{save_path}!")
 
             if self.compress_to_cbr:
-                folder = os.path.join(output, add_leading_zeros(chapter, 4))
+                folder = os.path.join(params["output"], add_leading_zeros(params["chapter"], 4))
                 create_cbr(folder)
 
         except asyncio.TimeoutError:
-            raise Exception("Timeout in downloading chapter %s!", chapter)
+            raise Exception("Timeout in downloading chapter %s!", params["chapter"])
 
         except Exception as e:
             raise Exception(f"Error on download and save chapter!\n\n{e}")
 
-    async def _download_chapters(self, output: str, chapter_details: typing.Iterable) -> None:
+    def _get_chap_details(self, output: str, chp: dict, sub: bool = False):
+        chapter = chp["Chapter"][1:] if sub else chp["Chapter"][1:-1]
+        directory, prefix = get_directory_value(chp["Directory"])
+        directory = int(directory) if directory != "" else 1
+        pages = int(chp["Page"])
+
+        if not os.path.isdir(os.path.join(output, chapter)):
+            os.mkdir(os.path.join(output, chapter))
+
+        return chapter, directory, pages
+
+    async def _download_chapters(self, output: str, chapters_details: typing.Iterable) -> None:
         session = requests_html.AsyncHTMLSession()
         coroutines = []
 
         last_downloaded = 0
         last_directory = 0
 
-        for ch_detail in chapter_details:
-            chapter = ch_detail["Chapter"][1:-1]
-            directory, prefix = get_directory_value(ch_detail["Directory"])
-            directory = int(directory) if directory != "" else 1
-            pages = int(ch_detail["Page"])
+        for ch_detail in chapters_details:
+            chapter, directory, pages = self._get_chap_details(output, ch_detail)
+            params = {
+                "output": output,
+                "directory": directory,
+                "chapter": chapter,
+                "pages": pages,
+                "sub": False
+            }
+            coroutines.append(self._download_and_save_files(session, params))
 
-            if not os.path.isdir(os.path.join(output, chapter)):
-                os.mkdir(os.path.join(output, chapter))
+            if "sub" in ch_detail:
+                chapter, directory, pages = self._get_chap_details(output, ch_detail["sub"], True)
+                params = {
+                    "output": output,
+                    "directory": directory,
+                    "chapter": chapter,
+                    "pages": pages,
+                    "sub": True
+                }
+                coroutines.append(self._download_and_save_files(session, params))
 
-            coroutines.append(
-                self._save_chapter_file(session, output, directory, chapter, pages),
-            )
             last_downloaded = chapter
             last_directory = directory
 
