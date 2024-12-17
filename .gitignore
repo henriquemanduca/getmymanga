@@ -9,6 +9,7 @@ __pycache__/
 .idea
 getmymanga.db
 temp.json
+test.py
 
 # Distribution / packaging
 .Python

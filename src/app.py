@@ -37,7 +37,7 @@ class App(ctk.CTk):
         self.init_vars()
         self.create_widgets()
         self._get_history()
-        self._source_combobox(get_sources()[1])
+        self._source_combobox(self.get_default_source())
 
     def init_vars(self):
         if "nt" == os.name:
@@ -51,8 +51,8 @@ class App(ctk.CTk):
         self.dir_option_var = tk.StringVar()
         self.download_option_var = tk.StringVar()
         # self.history_option_var = tk.StringVar()
-        self.history_option_var = tk.StringVar(value="Berserk")
-        self.source_option_var = tk.StringVar(value=get_sources()[1])
+        self.history_option_var = tk.StringVar(value=self.get_last_manga())
+        self.source_option_var = tk.StringVar(value=self.get_default_source())
 
         self.folder_var = tk.StringVar(value=f"{get_default_download_folder()}")
         self.manga_name_var = tk.StringVar(value="")
@@ -159,6 +159,12 @@ class App(ctk.CTk):
         # define the grid
         # self.columnconfigure(0, weight=0)
         self.columnconfigure((0, 1, 2, 3), weight=0)
+
+    def get_last_manga(self) -> str:
+        return "Berserk"
+
+    def get_default_source(self) -> str:
+        return get_sources()[0]
 
     def _set_normal_state(self, fields):
         if isinstance(fields, list):
