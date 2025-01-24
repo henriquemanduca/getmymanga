@@ -10,6 +10,7 @@ from CTkMessagebox import CTkMessagebox as mbox
 from src.repositories.manga import MangaRepository
 from src.services.mangasee_service import MangaseeService
 from src.services.mangaonline_service import MangaOnlineService
+from src.services.wcentral_service import WeebCentralService
 from src.services.utils import get_default_download_folder, get_sources
 
 
@@ -26,7 +27,7 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Get my manga!")
-        window_width = 605
+        window_width = 625
         window_height = 300
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -69,7 +70,7 @@ class App(ctk.CTk):
         option_label = ctk.CTkLabel(self, text="Save on:")
         option_label.grid(row=row, column=0, padx=5, pady=0, sticky="w")
 
-        manga_label = ctk.CTkLabel(self, text="Name (from URL):")
+        manga_label = ctk.CTkLabel(self, text="Name/Code (from URL Site):")
         manga_label.grid(row=row, column=3, padx=5, pady=0, sticky="w")
 
         row += 1
@@ -233,9 +234,13 @@ class App(ctk.CTk):
 
     def _source_combobox(self, event=None):
         if event == get_sources()[0]:
-            self.download_service = MangaseeService()
-        else:
+            self.download_service = WeebCentralService()
+
+        elif event == get_sources()[1]:
             self.download_service = MangaOnlineService()
+
+        else:
+            self.download_service = MangaseeService()
 
     def _set_directory(self, directories: int):
          self.dir_combobox.configure(values=[str(i) for i in range(1, directories + 1)])
@@ -258,7 +263,7 @@ class App(ctk.CTk):
             self.available_directories = manga_dict["directories"]
 
             direcotory_count = len(self.available_directories)
-            chapters_count = manga_dict["chapters_count"]
+            chapters_count = manga_dict['chapters_count']
 
             self._set_directory(len(self.available_directories))
 

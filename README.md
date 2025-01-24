@@ -3,7 +3,7 @@
 ## Descrição
 
 Esse projeto tem por objetivo facilitar a extração páginas e/ou capítulos de mangas
-dos sites mangasee123.com ou mangaonline.biz.
+dos sites weebcentral.com ou mangaonline.biz.
 
 ## Principais Funcionalidades
 
