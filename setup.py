@@ -5,7 +5,7 @@ setup(
     version='0.9', #version
     author='Manduca',#your name
     author_email='hms2@pm.me', # your email
-    description='A way to download mangas from mangasee123.com',#description
+    description='A way to download mangas from internet',#description
     scripts=['main.py'], # the main script
     #data_files=[('/etc/systemd/system', ['eshare.service']), ('/etc/eshare', ['eshare.conf'])], #where the files will be stored
     install_requires=['asyncio'], #dependencies

@@ -97,4 +97,4 @@ async def calculate_md5(content):
 
 
 def get_sources():
-    return ["Mangasee123", "Mangaonline"]
+    return ["WeebCentral", "Mangaonline", "Mangasee123"]

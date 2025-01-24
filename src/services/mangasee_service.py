@@ -85,6 +85,8 @@ class MangaseeService:
             raise Exception(f"No chapters found on \n {url}.")
 
     def search_chapters(self, manga_name: str) -> dict:
+        raise Exception("Deprecated website!")
+
         self.manga_name = manga_name
 
         if manga_dict := self._get_manga_dict():
