@@ -264,6 +264,8 @@ class MangaseeService:
         return self._get_manga_dict()["directories"][str(directory)]
 
     def get_files(self, params_dic):
+        raise Exception("Deprecated website!")
+
         start_at = 1
         end_at = 1
 
